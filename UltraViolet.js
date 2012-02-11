@@ -1,14 +1,15 @@
 /*
 	UltraViolet Spectrum Enhancer.
 	Robert Jacobson
-	2/5/2012: Version 1.02
+	2/5/2012: Version 1.03
 */
 
 //Some magic numbers and defaults;
-var DOM_WAIT = 3000; //How many milliseconds to wait for browser to construct DOM.
+var DOM_WAIT = 1000; //How many milliseconds to wait for browser to construct DOM.
 var hiddenListDefaults = ["Bicycle Truth"];
 var alwaysHide = true; //Overwritten if already set. Otherwise, default.
 var jumpToNew = false; //Overwritten if already set. Otherwise, default.
+var trackingReplyBox = true; //Overwritten if already set. Otherwise, default.
 
 //The first thing we do is see if there are any comments on the page.
 //If not, stop executing this script.
@@ -42,7 +43,7 @@ if(!localStorage.alwaysHide){ //Check for existence.
 	}
 }
 
-//We also want to keep track of whether or not to show the hiddenList by default.
+//We keep track of whether or not to show the hiddenList by default.
 if(!localStorage.jumpToNew){ //Check for existence.
 	//The default is to NOT always jump to the new comments when the page loads.
 	if(jumpToNew) localStorage.jumpToNew = "YES";
@@ -59,6 +60,22 @@ if(!localStorage.jumpToNew){ //Check for existence.
 //We execute the scroll at the end of this script since we'll be changing
 //the content of the page before then.
 
+//We keep track of whether or not to have a tracking reply box.
+if(!localStorage.trackingReplyBox){ //Check for existence.
+	//The default is to have a tracking comment box.
+	if(trackingReplyBox) localStorage.trackingReplyBox = "YES";
+	else localStorage.trackingReplyBox = "NO";
+} else{
+	if (localStorage.trackingReplyBox == "NO"){
+		trackingReplyBox = false;
+	} else if (localStorage.trackingReplyBox == "YES") { //A superfluous case, but check it.
+		trackingReplyBox = true;
+	} else { //Someone's been sleeping in my bed and she's still there!
+		localStorage.trackingReplyBox = "YES";
+	}
+}
+
+
 //This guy will hold information about the comments. It will be an array of 
 //objects of type comment, defined below.
 var comments = new Array();
@@ -73,6 +90,22 @@ function comment(idNum, username, divElement){
 	this.idNum = idNum;
 	this.username = username;
 	this.divElement = divElement;
+}
+
+//Toggle the reply box.
+function toggleReplyBox(){
+    var innerReplyBox = document.getElementById("UVReplyBox");
+    var replyBox = document.getElementsByClassName("box")[0];
+
+    if(innerReplyBox.style.display=="none"){
+        replyBox.style.position = "absolute"; //Stop the magic floating.
+        replyBox.style.top = document.body.scrollTop + window.innerHeight - 20 + "px";
+        innerReplyBox.style.display="block";
+    } else{
+        innerReplyBox.style.display="none";
+        replyBox.style.top = "95%"
+        replyBox.style.position = "fixed"; //Start the magic floating.
+    }
 }
 
 //Returns true if elmnt is a member of array, false otherwise.
@@ -100,6 +133,12 @@ function saveHiddenList(){
 	hiddenList = document.getElementById("UVtxtHiddenList").value.split("\n");
 	if(hiddenList[hiddenList.length - 1] == "") hiddenList.pop();
 	localStorage.hiddenList = JSON.stringify(hiddenList);
+}
+
+//User clicked the always hide checkbox.
+function toggleTrackingReplyBox(){
+	if(localStorage.trackingReplyBox=="NO") localStorage.trackingReplyBox = "YES";
+	else localStorage.trackingReplyBox = "NO";
 }
 
 //User clicked the always hide checkbox.
@@ -218,6 +257,7 @@ function addUVEventHandlers(){
 	}
 	
 	//Hook up the event listeners for the Settings Menu.
+	document.getElementById("UVchkTrackingReplyBox").addEventListener("click", toggleTrackingReplyBox, false);
 	document.getElementById("UVchkAlwaysHide").addEventListener("click", toggleAlwaysHide, false);
 	document.getElementById("UVchkJumpToNew").addEventListener("click", toggleJumpToNew, false);
 	document.getElementById("UVSaveChanges").addEventListener("click", saveHiddenList, false);
@@ -243,6 +283,13 @@ function addUVEventHandlers(){
 			toggleVisibility("UVControlInner");
 		}, false);
 	document.getElementById("UVControlMenu").style.display = "block";
+    if(trackingReplyBox){
+        document.getElementById("UVShowReplyBox").addEventListener("click", function()
+            {
+                toggleReplyBox();
+            }, false);
+        document.getElementsByClassName("box")[0].style.display = "block";
+    }
 }
 
 //Let us collect all of the comment id numbers which are stored in anchors.
@@ -273,6 +320,9 @@ for(i=0; i < elements.length; i++){
 //document.write("Found " + commentCount + " comment usernames.<br />");
 //I'm done with this. Tell the garbage collector that it can reclaim any memory it needs.
 delete elements;
+
+//We there are no comments, do not have a tracking reply box.
+if(0==commentCount) trackingReplyBox = false;
 
 //Rewrite the HTML for the comments. 
 //We add a control box.
@@ -345,6 +395,11 @@ function ControlInnerHTML(){
 	strControls += "<input type='checkbox' id='UVchkJumpToNew' value='YES'"
 	if(jumpToNew) strControls += " checked ";
 	strControls += "/> Always jump to new comments.<br><br>";
+    //Floating "Add your comment" box.
+    strControls += "<input type='checkbox' id='UVchkTrackingReplyBox' value='YES'"
+	if("YES" == localStorage.trackingReplyBox) strControls += " checked ";
+	strControls += "/> Floating Comment Box. (Takes effect on refresh.)<br><br>";
+    
 	//Hidden List
 	strControls += "Hidden List:<br>";
 	strControls += "<textarea id='UVtxtHiddenList' rows='5' cols='10' style='width:190px;border:1px solid #000000'>"; //Remember to override Spectrum's css.
@@ -395,6 +450,25 @@ strNewHTML += "<div id='UVCommunicate' style='display:none'></div>";
 //Write out the HTML for our control box.
 commentContainer.innerHTML = commentContainer.innerHTML + strNewHTML;
 //document.write(strNewHTML); //Debug version.
+
+var replyBox = document.getElementsByClassName("box")[0];
+if(trackingReplyBox){
+    replyBox.style.display="none";
+    //Set up the tracking "Add your comment" box.
+    //For some reason the "Add your comment" box is the only element of class "box".
+    strNewHTML = "<div id='UVReplyBoxControl' >";
+    strNewHTML += "<a href='javascript:;' id='UVShowReplyBox' style='text-decoration:none;position:relative;top:-10px;'>";
+    strNewHTML += "Add your comment&crarr;</a>";
+    strNewHTML += "</div>";
+    strNewHTML += "<div id='UVReplyBox' style='display:none'>";
+    strNewHTML += replyBox.innerHTML;
+    strNewHTML += "</div>";
+    
+    replyBox.innerHTML = strNewHTML;
+    replyBox.style.position="fixed";
+    replyBox.style.top="95%";
+    replyBox.style.zIndex="9";
+}
 
 //We're done changing the contents of the page. Scroll the page to new comments.
 if(jumpToNew) document.getElementById("new").scrollIntoView();

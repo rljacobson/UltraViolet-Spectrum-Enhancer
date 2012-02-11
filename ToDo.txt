@@ -1,1 +1,2 @@
-Nothing for now.
+* Unify the Firefox and Chrome/Safari codebase.
+* Make the width of the comment box the same as the width of the comments.
