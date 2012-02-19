@@ -1,2 +1,17 @@
 * Unify the Firefox and Chrome/Safari codebase.
 * Make the width of the comment box the same as the width of the comments.
+* Rewrite the event listener code to use this.id instead of UVCommunicate.
+* Rewrite the add event listener code to check for DOM attachment via if(document.getElementById(idname)) code. Will fix bug #1 below.
+
+BUGS:
+
+1. addEvent still outpacing DOM creation on FireFox.
+http://spectrummagazine.org/blog/2012/02/15/new-browser-extension-enhances-spectrum-commenting#comment-123293
+
+2. UVHiddenListMenu122569 showing up in the Hidden List somehow.
+http://spectrummagazine.org/blog/2012/02/15/new-browser-extension-enhances-spectrum-commenting#comment-123371
+I cannot reproduce this. Perhaps rewriting event listener code to use this.id instead of UVCommunicate will fix this.
+
+FEATURES:
+
+* Put "Add your comment" on the sidebar and have it float.
