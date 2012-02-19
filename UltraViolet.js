@@ -1,15 +1,18 @@
 /*
 	UltraViolet Spectrum Enhancer.
 	Robert Jacobson
-	2/5/2012: Version 1.03
+	2/18/2012: Version 1.1
 */
 
 //Some magic numbers and defaults;
-var DOM_WAIT = 1000; //How many milliseconds to wait for browser to construct DOM.
+var DOM_WAIT = 200; //How many milliseconds to wait for browser to construct DOM.
 var hiddenListDefaults = ["Bicycle Truth"];
 var alwaysHide = true; //Overwritten if already set. Otherwise, default.
 var jumpToNew = false; //Overwritten if already set. Otherwise, default.
 var trackingReplyBox = true; //Overwritten if already set. Otherwise, default.
+//var hiddenList declared when hidden list is read from local storage.
+//Other variables are defined AFTER reading data from local storage, before function definitions.
+
 
 //The first thing we do is see if there are any comments on the page.
 //If not, stop executing this script.
@@ -92,6 +95,22 @@ function comment(idNum, username, divElement){
 	this.divElement = divElement;
 }
 
+//This function waits until elementId is added to the document's
+//DOM to add the event listener. 
+function safeAddEventListener(elementId, event, funct){
+	if(document.getElementById(elementId)){
+		//The dynamically created elements have been attached to the document's
+		//DOM. Add the event listener.
+		document.getElementById(elementId).addEventListener(event, function()
+			{
+				funct();
+			}, false);
+	} else{
+		//The element isn't attached yet. Try again after DOM_WAIT milliseconds.
+		setTimeout(function(){safeAddEventListener(elementId, event, funct);}, DOM_WAIT);
+	}
+}
+
 //Toggle the reply box.
 function toggleReplyBox(){
     var innerReplyBox = document.getElementById("UVReplyBox");
@@ -157,7 +176,7 @@ function toggleJumpToNew(){
 
 //Expand or hide all comments on Hidden List.
 function showHiddenListed(expanding){
-	var j;
+	var j = 0;
 	var isElement = false;
 	var strDisplayProperty = "none";
 	if(expanding) strDisplayProperty = "block";
@@ -171,7 +190,7 @@ function showHiddenListed(expanding){
 
 //Expand or hide all comments.
 function showAllComments(expanding){
-	var j;
+	var j = 0;
 	var strDisplayProperty = "none";
 	if(expanding) strDisplayProperty = "block";
 	for(j=0; j < comments.length; j++){
@@ -183,22 +202,28 @@ function showAllComments(expanding){
 function addUsernameToHiddenList(newUsername){
 	var j = 0;
 	var isElement = memberOf(newUsername, hiddenList);
+	var listString = document.getElementById("UVtxtHiddenList").value;
 
-	if(isElement) return; //User is already Hidden List.
-	hiddenList.push(newUsername);
-	
-	//Save changes to the hiddenList in the localStorage.
-	localStorage.hiddenList = JSON.stringify(hiddenList);
-	
-	//Rewrite UVControlInner to reflect our changes.
-	document.getElementById("UVControlInner").innerHTML = ControlInnerHTML();
-	
-	//Finally, collapse all comments by that username.
+	//Collapse all comments by that username.
 	for(j=0; j < comments.length; j++){
 		if(comments[j].username == newUsername){
 			document.getElementById("UVComment" + comments[j].idNum).style.display = "none";
 		}
 	}	
+	
+	if(isElement) return; //User is already Hidden Listed.
+	hiddenList.push(newUsername);
+
+	//Save changes to the hiddenList in the localStorage.
+	localStorage.hiddenList = JSON.stringify(hiddenList);
+	
+	//Update UVtxtHiddenList to reflect our changes.
+	//We have to check for newline. grr...
+	if(listString.length==0 | listString.charAt(listString.length - 1)=="\n"){
+		document.getElementById("UVtxtHiddenList").value += newUsername;
+	} else{
+		document.getElementById("UVtxtHiddenList").value += ("\n" + newUsername);
+	}
 }
 
 /*
@@ -206,9 +231,8 @@ function addUsernameToHiddenList(newUsername){
 	HTML to the page which has to communicate to our script. Problem is, javascript 
 	that we write to the page cannot call functions in this script--at least not 
 	directly. Thus we add event listeners after the fact that CAN call functions in this
-	script directly. BUT we have to wait until the browser has constructed the DOM for
-	all the HTML that we've written out before we can attach an event listener. There
-	is no perfect way to do this as far as I can tell, so we just do a setTimeout(). :(
+	script directly. BUT we have to wait until the browser has attached to the DOM for
+	all the HTML that we've written out before we can attach an event listener. 
 */
 function addUVEventHandlers(){
 	var i;
@@ -216,7 +240,6 @@ function addUVEventHandlers(){
 	var strHiddenListMenuDivId;
 	var strShowHideAnchorId;
 	var strHiddenListXDivId;
-	var strTemp;
 	var splitData;
 
 	//Hook up the comment control bar.
@@ -227,67 +250,68 @@ function addUVEventHandlers(){
 		strHiddenListXDivId = "UVXDiv" + comments[i].idNum;	
 		
 		//Click the show/hide link.
-		document.getElementById(strShowHideAnchorId).addEventListener("click", function()
+		safeAddEventListener(strShowHideAnchorId, "click", function()
 			{
 				//We have set the onclick event to store info in a hidden
 				//div called UVCommunicate.
-				strTemp = document.getElementById("UVCommunicate").innerText;
+				var strTemp = document.getElementById("UVCommunicate").innerText;
 				toggleVisibility(strTemp);
-			}, false);
+			});
 		
 		//Click the "X" menu to reveal the "Hide this user" option.
-		document.getElementById(strHiddenListXDivId).addEventListener("click", function()
+		safeAddEventListener(strHiddenListXDivId, "click", function()
 			{
 				//We have set the onclick event to store info in a hidden
 				//div called UVCommunicate.
-				strTemp = document.getElementById("UVCommunicate").innerText;
+				var strTemp = document.getElementById("UVCommunicate").innerText;
 				toggleVisibility(strTemp);
-			}, false);
+			});
 		
 		//Click the "Hide this user" option.
-		document.getElementById(strHiddenListMenuDivId).addEventListener("click", function()
+		safeAddEventListener(strHiddenListMenuDivId, "click", function()
 			{
 				//We have set the onclick event to store info in a hidden
 				//div called UVCommunicate. First token is username, second is strHiddenListMenuDivId.
-				strTemp = document.getElementById("UVCommunicate").innerText;
+				var strTemp = document.getElementById("UVCommunicate").innerText;
 				splitData = strTemp.split("?"); //Note that "?" is not allowed in usernames.
 				addUsernameToHiddenList(splitData[0]);
 				toggleVisibility(splitData[1]);
-			}, false);
+			});
 	}
 	
 	//Hook up the event listeners for the Settings Menu.
-	document.getElementById("UVchkTrackingReplyBox").addEventListener("click", toggleTrackingReplyBox, false);
-	document.getElementById("UVchkAlwaysHide").addEventListener("click", toggleAlwaysHide, false);
-	document.getElementById("UVchkJumpToNew").addEventListener("click", toggleJumpToNew, false);
-	document.getElementById("UVSaveChanges").addEventListener("click", saveHiddenList, false);
-	document.getElementById("UVShowHiddenListed").addEventListener("click", function()
+	safeAddEventListener("UVchkTrackingReplyBox", "click", toggleTrackingReplyBox);
+	safeAddEventListener("UVchkAlwaysHide", "click", toggleAlwaysHide);
+	safeAddEventListener("UVchkJumpToNew", "click", toggleJumpToNew);
+	safeAddEventListener("UVSaveChanges", "click", saveHiddenList);
+	
+	safeAddEventListener("UVShowHiddenListed", "click", function()
 		{
 			showHiddenListed(true);
-		}, false);
-	document.getElementById("UVHideHiddenListed").addEventListener("click", function()
+		});
+	safeAddEventListener("UVHideHiddenListed", "click", function()
 		{
 			showHiddenListed(false);
-		}, false);
-	document.getElementById("UVShowAll").addEventListener("click", function()
+		});
+	safeAddEventListener("UVShowAll", "click", function()
 		{
 			showAllComments(true);
-		}, false);
-	document.getElementById("UVHideAll").addEventListener("click", function()
+		});
+	safeAddEventListener("UVHideAll", "click", function()
 		{
 			showAllComments(false);
-		}, false);
-	document.getElementById("UVControlMenu").addEventListener("click", function()
+		});
+	safeAddEventListener("UVControlMenu", "click", function()
 		{
 			saveHiddenList();
 			toggleVisibility("UVControlInner");
-		}, false);
-	document.getElementById("UVControlMenu").style.display = "block";
+		});
+	
     if(trackingReplyBox){
-        document.getElementById("UVShowReplyBox").addEventListener("click", function()
+		safeAddEventListener("UVShowReplyBox", "click", function()
             {
                 toggleReplyBox();
-            }, false);
+            });
         document.getElementsByClassName("box")[0].style.display = "block";
     }
 }
@@ -302,8 +326,6 @@ for(i=0; i < elements.length; i++){
 	}
 }
 
-//document.write("Found " + commentCount + " comment anchors.<br />");
-
 //Now let's get all the usernames for the comments, that is, the comment authors. 
 //They are stored in a span tag with a conveniently marked classname.
 elements = document.getElementsByTagName("span");
@@ -317,7 +339,6 @@ for(i=0; i < elements.length; i++){
 		commentCount++;
 	}	
 }
-//document.write("Found " + commentCount + " comment usernames.<br />");
 //I'm done with this. Tell the garbage collector that it can reclaim any memory it needs.
 delete elements;
 
@@ -382,11 +403,9 @@ for(i = 0; i < commentCount; i++){
 //We define a function because we'll want to redraw this stuff when things change.
 //[Note that the helper functions for these controls are defined below.]
 var strControls;
-
 function ControlInnerHTML(){
 	var j = 0;
 	var strControls = "<u><strong>UltraViolet Spectrum Settings</strong></u><br><br>";
-	//strControls += "<form name='UVControlForm'>";
 	//Always hide hiddenList.
 	strControls += "<input type='checkbox' id='UVchkAlwaysHide' value='YES'"
 	if(alwaysHide) strControls += " checked ";
@@ -402,15 +421,15 @@ function ControlInnerHTML(){
     
 	//Hidden List
 	strControls += "Hidden List:<br>";
-	strControls += "<textarea id='UVtxtHiddenList' rows='5' cols='10' style='width:190px;border:1px solid #000000'>"; //Remember to override Spectrum's css.
+	strControls += "<textarea id='UVtxtHiddenList' rows='10' cols='10' style='width:190px;border:1px solid #000000'>"; //Remember to override Spectrum's css.
 	for(j = 0; j < hiddenList.length; j++){
 		strControls += hiddenList[j] + "\n"
 	}
 	strControls += "</textarea><br>";
 	strControls += "(One username per line. Things like spaces and caps matter!)<br>";
-	//Sace Changes.
+	//Save Changes.
 	strControls += "<a href='javascript:;' id='UVSaveChanges' style='text-decoration:none;'>Save changes</a><br><br>";
-	//strControls += "</form>";
+	
 	//Expand/contract various.
 	strControls += "<a id='UVShowHiddenListed' href='javascript:;' style='text-decoration:none;'>Show comments on Hidden List</a><br>";
 	strControls += "<a id='UVHideHiddenListed' href='javascript:;' style='text-decoration:none;'>Hide comments on Hidden List</a><br>";
@@ -433,7 +452,7 @@ strNewHTML += "<div style='";
 strNewHTML += "position:fixed;"; //This is the magic property value that makes it float.
 strNewHTML += "width:30px;height:10px;left:10px;top:0px;z-index:10;";
 strNewHTML += "'>";
-strNewHTML += "<a id='UVControlMenu' href='javascript:;' style='display:none;text-align:center;text-decoration:none;color:#FFFFFF;background-color:#C0C0C0'>&nbsp;UV&nbsp;</a> "
+strNewHTML += "<a id='UVControlMenu' href='javascript:;' style='text-align:center;text-decoration:none;color:#FFFFFF;background-color:#C0C0C0'>&nbsp;UV&nbsp;</a> "
 strNewHTML += "</div>";
 //Control Box
 strNewHTML += "<div id='UVControl' style='";
@@ -443,13 +462,8 @@ strNewHTML += "'>";
 strNewHTML += strControls; //Hidden until clicked.
 strNewHTML += "</div>";
 
-//We also need a way to communicate betweeen the scripts on the page and this script. 
-//We do this with an invisible div.
-strNewHTML += "<div id='UVCommunicate' style='display:none'></div>";
-
 //Write out the HTML for our control box.
 commentContainer.innerHTML = commentContainer.innerHTML + strNewHTML;
-//document.write(strNewHTML); //Debug version.
 
 var replyBox = document.getElementsByClassName("box")[0];
 if(trackingReplyBox){
@@ -470,13 +484,19 @@ if(trackingReplyBox){
     replyBox.style.zIndex="9";
 }
 
+//We also need a way to communicate betweeen the scripts on the page and this script. 
+//We do this with an invisible div.
+document.write( "<div id='UVCommunicate' style='display:none'></div>" );
+//document.write( "<div id='UVCommunicate'></div>" );
+
 //We're done changing the contents of the page. Scroll the page to new comments.
-if(jumpToNew) document.getElementById("new").scrollIntoView();
+if(jumpToNew){
+	//Only try to scroll to new comments if there are in fact new comments.
+	if(document.getElementById("new")) document.getElementById("new").scrollIntoView();
+}
 
 /*
   Now that the custom HTML is written out, hook up the event listeners. This is necessary
   because the HTML code I've written cannot call javascript functions defined here.
-  The problem is, we need to wait until the browser builds the DOM of all the code
-  we just wrote out to the page. That's what the setTimeout() call is for. :(
 */
-setTimeout(addUVEventHandlers, DOM_WAIT);
+addUVEventHandlers();

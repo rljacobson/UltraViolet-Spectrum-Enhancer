@@ -1,3 +1,17 @@
+NEW IN VERSION 1.1
+Fixed the following bugs:
+* "Always jump to new comments" causes the extension to stop working if there are no new comments.
+* Some (or all) controls are unresponsive.
+* The controls in the settings menu would become unresponsive after a user was added to the hidden list via the "X" menu.
+* Adding a username to the Hidden List from the "X" menu does not handle newlines correctly.
+* Sometimes stuff like UVHiddenListMenu9873298 would be added to the Hidden List when hiding a user using the "X" menu.
+
+New features:
+* Added a few lines to the Hidden List box.
+* Changed the functionality of the "Hide username" link so that clicking it for a username that is already on the Hidden List still collapses all comments by that username.
+
+ABOUT
+
 UltraViolet Spectrum Enhancer provides a show/hide button on every comment. It also puts a "direct link" by each comment, too. You can make a "Hidden List" of usernames whose comments are always hidden by default. Add a username to the Hidden List by clicking the "X" on the upper right of a comment. To edit the Hidden List and other settings, click the "UV" floating in the upper right corner of the page.
 
 Google Chrome:
