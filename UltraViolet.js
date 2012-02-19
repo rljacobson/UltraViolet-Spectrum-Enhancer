@@ -110,7 +110,6 @@ function safeAddEventListener(elementId, event, funct){
 		setTimeout(function(){safeAddEventListener(elementId, event, funct);}, DOM_WAIT);
 	}
 }
-
 //Toggle the reply box.
 function toggleReplyBox(){
     var innerReplyBox = document.getElementById("UVReplyBox");
@@ -341,7 +340,6 @@ for(i=0; i < elements.length; i++){
 }
 //I'm done with this. Tell the garbage collector that it can reclaim any memory it needs.
 delete elements;
-
 //We there are no comments, do not have a tracking reply box.
 if(0==commentCount) trackingReplyBox = false;
 
@@ -462,9 +460,14 @@ strNewHTML += "'>";
 strNewHTML += strControls; //Hidden until clicked.
 strNewHTML += "</div>";
 
+//We also need a way to communicate betweeen the scripts on the page and this script. 
+//We do this with an invisible div.
+strNewHTML +=  "<div id='UVCommunicate' style='display:none'></div>";
+//strNewHTML +=  "<div id='UVCommunicate' >hello world</div>";
+
+
 //Write out the HTML for our control box.
 commentContainer.innerHTML = commentContainer.innerHTML + strNewHTML;
-
 var replyBox = document.getElementsByClassName("box")[0];
 if(trackingReplyBox){
     replyBox.style.display="none";
@@ -477,17 +480,13 @@ if(trackingReplyBox){
     strNewHTML += "<div id='UVReplyBox' style='display:none'>";
     strNewHTML += replyBox.innerHTML;
     strNewHTML += "</div>";
-    
+
     replyBox.innerHTML = strNewHTML;
     replyBox.style.position="fixed";
     replyBox.style.top="95%";
     replyBox.style.zIndex="9";
 }
 
-//We also need a way to communicate betweeen the scripts on the page and this script. 
-//We do this with an invisible div.
-document.write( "<div id='UVCommunicate' style='display:none'></div>" );
-//document.write( "<div id='UVCommunicate'></div>" );
 
 //We're done changing the contents of the page. Scroll the page to new comments.
 if(jumpToNew){

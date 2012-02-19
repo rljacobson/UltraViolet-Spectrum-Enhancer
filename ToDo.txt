@@ -1,6 +1,7 @@
 * Unify the Firefox and Chrome/Safari codebase.
 * Make the width of the comment box the same as the width of the comments.
 * Rewrite the event listener code to use this.id instead of UVCommunicate.
+* FireFox+Greasemonkey does not like document.write(). Use innerHTML instead.
 
 BUGS:
 

@@ -4,7 +4,6 @@ Fixed the following bugs:
 * Some (or all) controls are unresponsive.
 * The controls in the settings menu would become unresponsive after a user was added to the hidden list via the "X" menu.
 * Adding a username to the Hidden List from the "X" menu does not handle newlines correctly.
-* Sometimes stuff like UVHiddenListMenu9873298 would be added to the Hidden List when hiding a user using the "X" menu.
 
 New features:
 * Added a few lines to the Hidden List box.
