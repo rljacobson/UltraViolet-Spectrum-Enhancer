@@ -1,6 +1,7 @@
 NEW IN VERSION 2.0
 * Put "Add your comment" on the sidebar and have it float.
 * Added "Show Only New Comments" option.
+* The Greasemonkey script now runs on Chrome or Firefox (unified codebase).
 
 NEW IN VERSION 1.1
 Fixed the following bugs:
