@@ -6,9 +6,11 @@
 
 //Some magic numbers and defaults;
 var DOM_WAIT = 200; //How many milliseconds to wait for browser to construct DOM.
+var REPLYBOXHEIGHT = 500; //Height of Reply Box in px.
 var hiddenListDefaults = ["Bicycle Truth"];
 var alwaysHide = true; //Overwritten if already set. Otherwise, default.
 var jumpToNew = false; //Overwritten if already set. Otherwise, default.
+var onlyShowNew = false; //Overwritten if already set. Otherwise, default.
 var trackingReplyBox = true; //Overwritten if already set. Otherwise, default.
 //var hiddenList declared when hidden list is read from local storage.
 //Other variables are defined AFTER reading data from local storage, before function definitions.
@@ -46,7 +48,22 @@ if(!localStorage.alwaysHide){ //Check for existence.
 	}
 }
 
-//We keep track of whether or not to show the hiddenList by default.
+//We keep track of whether or not to only show new comments by default.
+if(!localStorage.onlyShowNew){ //Check for existence.
+	//The default is to show all comments, not just new comments.
+	if(onlyShowNew) localStorage.onlyShowNew = "YES";
+	else localStorage.onlyShowNew = "NO";
+} else{
+	if (localStorage.onlyShowNew == "NO"){
+		onlyShowNew = false;
+	} else if (localStorage.onlyShowNew == "YES") { //A superfluous case, but check it.
+		onlyShowNew = true;
+	} else { //Someone's been sleeping in my bed and she's still there!
+		localStorage.onlyShowNew = "YES";
+	}
+}
+
+//We keep track of whether or not to jump to new comments by default.
 if(!localStorage.jumpToNew){ //Check for existence.
 	//The default is to NOT always jump to the new comments when the page loads.
 	if(jumpToNew) localStorage.jumpToNew = "YES";
@@ -93,6 +110,7 @@ function comment(idNum, username, divElement){
 	this.idNum = idNum;
 	this.username = username;
 	this.divElement = divElement;
+	this.isNew = false;
 }
 
 //This function waits until elementId is added to the document's
@@ -117,11 +135,11 @@ function toggleReplyBox(){
 
     if(innerReplyBox.style.display=="none"){
         replyBox.style.position = "absolute"; //Stop the magic floating.
-        replyBox.style.top = document.body.scrollTop + window.innerHeight - 20 + "px";
+        replyBox.style.top = document.body.scrollTop + window.innerHeight - REPLYBOXHEIGHT + "px";
         innerReplyBox.style.display="block";
     } else{
         innerReplyBox.style.display="none";
-        replyBox.style.top = "95%"
+        replyBox.style.top = "95%";
         replyBox.style.position = "fixed"; //Start the magic floating.
     }
 }
@@ -164,6 +182,13 @@ function toggleAlwaysHide(){
 	alwaysHide = !alwaysHide;
 	if(alwaysHide) localStorage.alwaysHide = "YES";
 	else localStorage.alwaysHide = "NO";
+}
+
+//User clicked the only show new checkbox.
+function toggleOnlyShowNew(){
+	onlyShowNew = !onlyShowNew;
+	if(onlyShowNew) localStorage.onlyShowNew = "YES";
+	else localStorage.onlyShowNew = "NO";
 }
 
 //User clicked the always jump to new checkbox.
@@ -279,9 +304,10 @@ function addUVEventHandlers(){
 	}
 	
 	//Hook up the event listeners for the Settings Menu.
-	safeAddEventListener("UVchkTrackingReplyBox", "click", toggleTrackingReplyBox);
-	safeAddEventListener("UVchkAlwaysHide", "click", toggleAlwaysHide);
-	safeAddEventListener("UVchkJumpToNew", "click", toggleJumpToNew);
+	safeAddEventListener("UVTrackingReplyBox", "click", toggleTrackingReplyBox);
+	safeAddEventListener("UVAlwaysHide", "click", toggleAlwaysHide);
+	safeAddEventListener("UVOnlyShowNew", "click", toggleOnlyShowNew);
+	safeAddEventListener("UVJumpToNew", "click", toggleJumpToNew);
 	safeAddEventListener("UVSaveChanges", "click", saveHiddenList);
 	
 	safeAddEventListener("UVShowHiddenListed", "click", function()
@@ -327,16 +353,15 @@ for(i=0; i < elements.length; i++){
 
 //Now let's get all the usernames for the comments, that is, the comment authors. 
 //They are stored in a span tag with a conveniently marked classname.
-elements = document.getElementsByTagName("span");
+//elements = document.getElementsByTagName("span");
+elements = document.getElementsByClassName("username");
 commentCount = 0;
 for(i=0; i < elements.length; i++){
-	if(elements[i].getAttribute("class") == "username"){
-		//Need to strip HTML from this username! Nonregistered users have links for names.
-		//We strip HTML by using innerText rather than innerHTML.
-		comments[commentCount].username = elements[i].innerText;
-		comments[commentCount].divElement = elements[i];
-		commentCount++;
-	}	
+	//Need to strip HTML from this username! Nonregistered users have links for names.
+	//We strip HTML by using innerText rather than innerHTML.
+	comments[commentCount].username = elements[i].innerText;
+	comments[commentCount].divElement = elements[i];
+	commentCount++;
 }
 //I'm done with this. Tell the garbage collector that it can reclaim any memory it needs.
 delete elements;
@@ -351,8 +376,10 @@ var strCommentDivId;
 var strHiddenListMenuDivId;
 var strShowHideAnchorId;
 var strHiddenListXDivId;
+var hideThisComment;
 
 for(i = 0; i < commentCount; i++){
+	hideThisComment = false;
 	strCommentDivId = "UVComment" + comments[i].idNum;
 	strHiddenListMenuDivId = "UVHiddenListMenu" + comments[i].idNum;
 	strShowHideAnchorId = "UVShowHideAnchor" + comments[i].idNum;
@@ -377,7 +404,7 @@ for(i = 0; i < commentCount; i++){
 	strNewHTML += "onclick='document.getElementById(\"UVCommunicate\").innerText=\"" + strHiddenListMenuDivId + "\";'>X</a>";
 	
 	//The hiddenList user link.
-	strNewHTML += "<div id='" + strHiddenListMenuDivId + "' style='display:none;float:right'>&nbsp;&nbsp;";
+	strNewHTML += "<div id='" + strHiddenListMenuDivId + "' style='display:none;float:right;'>&nbsp;&nbsp;";
 	strNewHTML += "<a href='javascript:;' onclick='document.getElementById(\"UVCommunicate\").innerText=\"";
 	strNewHTML += comments[i].username + "?" + strHiddenListMenuDivId + "\";' style='text-decoration:none;'>";
 	strNewHTML += "Hide " + comments[i].username + ".</a></div></div>";
@@ -387,7 +414,20 @@ for(i = 0; i < commentCount; i++){
 	
 	//Wrap comment in a hide-able div with a known id.
 	strNewHTML += "<div id='" + strCommentDivId + "'";
-	if(memberOf(comments[i].username, hiddenList) & alwaysHide) strNewHTML += " style='display:none'";
+		
+	//Check if it's a new comment.
+	if(comments[i].divElement.parentNode.parentNode.innerHTML.match("<span class=\"new\">New</span>")){
+		comments[i].isNew = true;
+	} else{
+		comments[i].isNew = false;
+	}
+
+	//Check if we should hide this comment.
+	if(comments[i].isNew==false & onlyShowNew) hideThisComment = true;
+	if(memberOf(comments[i].username, hiddenList) & alwaysHide) hideThisComment = true;
+
+	if(hideThisComment) strNewHTML += " style='display:none'";
+	
 	strNewHTML += " >";
 	strNewHTML += comments[i].divElement.parentNode.parentNode.innerHTML;
 	strNewHTML += "</div>";
@@ -405,15 +445,22 @@ function ControlInnerHTML(){
 	var j = 0;
 	var strControls = "<u><strong>UltraViolet Spectrum Settings</strong></u><br><br>";
 	//Always hide hiddenList.
-	strControls += "<input type='checkbox' id='UVchkAlwaysHide' value='YES'"
+	strControls += "<input type='checkbox' id='UVAlwaysHide' value='YES'"
 	if(alwaysHide) strControls += " checked ";
 	strControls += "/> Always hide comments by people on my Hidden List.<br><br>";
+	
+	//Show only new comments.
+	strControls += "<input type='checkbox' id='UVOnlyShowNew' value='YES'"
+	if(onlyShowNew) strControls += " checked ";
+	strControls += "/> Only show new comments.<br><br>";
+    
 	//Always jump to new comments.
-	strControls += "<input type='checkbox' id='UVchkJumpToNew' value='YES'"
+	strControls += "<input type='checkbox' id='UVJumpToNew' value='YES'"
 	if(jumpToNew) strControls += " checked ";
 	strControls += "/> Always jump to new comments.<br><br>";
+    
     //Floating "Add your comment" box.
-    strControls += "<input type='checkbox' id='UVchkTrackingReplyBox' value='YES'"
+    strControls += "<input type='checkbox' id='UVTrackingReplyBox' value='YES'"
 	if("YES" == localStorage.trackingReplyBox) strControls += " checked ";
 	strControls += "/> Floating Comment Box. (Takes effect on refresh.)<br><br>";
     
@@ -450,7 +497,7 @@ strNewHTML += "<div style='";
 strNewHTML += "position:fixed;"; //This is the magic property value that makes it float.
 strNewHTML += "width:30px;height:10px;left:10px;top:0px;z-index:10;";
 strNewHTML += "'>";
-strNewHTML += "<a id='UVControlMenu' href='javascript:;' style='text-align:center;text-decoration:none;color:#FFFFFF;background-color:#C0C0C0'>&nbsp;UV&nbsp;</a> "
+strNewHTML += "<a id='UVControlMenu' href='javascript:;' style='text-align:center;text-decoration:none;color:#FFFFFF;background-color:#C0C0C0;border: 1px solid black'>&nbsp;UV&nbsp;</a> "
 strNewHTML += "</div>";
 //Control Box
 strNewHTML += "<div id='UVControl' style='";
@@ -482,8 +529,11 @@ if(trackingReplyBox){
     strNewHTML += "</div>";
 
     replyBox.innerHTML = strNewHTML;
+    replyBox.style.right="0px";
     replyBox.style.position="fixed";
     replyBox.style.top="95%";
+    replyBox.style.width="320px";
+    replyBox.style.border="1px solid black";
     replyBox.style.zIndex="9";
 }
 

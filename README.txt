@@ -1,3 +1,7 @@
+NEW IN VERSION 2.0
+* Put "Add your comment" on the sidebar and have it float.
+* Added "Show Only New Comments" option.
+
 NEW IN VERSION 1.1
 Fixed the following bugs:
 * "Always jump to new comments" causes the extension to stop working if there are no new comments.
@@ -27,5 +31,7 @@ https://addons.mozilla.org/en-US/firefox/addon/greasemonkey/
 Then they just click on the link. 
 
 Note that even though Chrome as built-in support for Greasemonkey scripts in general, this Greasemonkey script will only work on FireFox. Chrome users use the Chrome extension.
+
+LICENSE
 
 This software is provided under the MIT License. See LICENSE.txt for more information. The MIT License is a very permissive open source license--more permissive than the GPL.
