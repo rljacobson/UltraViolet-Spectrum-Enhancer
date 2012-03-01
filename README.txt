@@ -1,7 +1,12 @@
 NEW IN VERSION 2.0
-* Put "Add your comment" on the sidebar and have it float.
-* Added "Show Only New Comments" option.
+New features:
+* Option to have "Add your comment" float on the sidebar.
+* "Show Only New Comments" option.
+* Option to "shrink" large comments. If a comment is too long, only the first bit is shown, and the rest is revealed with a "read more" button.
 * The Greasemonkey script now runs on Chrome or Firefox (unified codebase).
+
+Bug fixes:
+* Major code refactoring. No known bugs.
 
 NEW IN VERSION 1.1
 Fixed the following bugs:

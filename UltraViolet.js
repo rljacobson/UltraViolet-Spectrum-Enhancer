@@ -1,26 +1,49 @@
+// ==UserScript==
+// @name          UltraViolet Spectrum Enhancer
+// @namespace     RobertJacobson
+// @description	  Adds features to the comments section of SpectrumMagazine.org.
+// @include       http://spectrummagazine.org/*
+// @include       https://spectrummagazine.org/*
+// @include       http://www.spectrummagazine.org/*
+// @include       https://www.spectrummagazine.org/*
+// ==/UserScript==
+
 /*
 	UltraViolet Spectrum Enhancer.
 	Robert Jacobson
-	2/26/2012: Version 2.0
+	2/29/2012: Version 2.0
 */
 
 /* GLOBAL VARIABLE DECLARATIONS */
 
-//Some magic numbers and defaults.
+//Constants
 var DOM_WAIT = 200; //How many milliseconds to wait for browser to construct DOM.
 var REPLYBOXHEIGHT = 500; //Height of Reply Box in px.
-var hiddenListDefaults = ["Bicycle Truth"];
+
+//Global Variables and Their Defaults
+var hiddenList = ["Bicycle Truth"];
 var alwaysHide = true; //Overwritten if already set. Otherwise, default.
 var jumpToNew = false; //Overwritten if already set. Otherwise, default.
 var onlyShowNew = false; //Overwritten if already set. Otherwise, default.
 var trackingReplyBox = true; //Overwritten if already set. Otherwise, default.
-var hiddenList;
-//If the commentContainer doesn't exist, there are no comments 
-//and we should stop executing the script.
-var commentContainer = document.getElementById("comments");
+var largeCommentHeight = 300; //Overwritten if already set. Otherwise, default.
+var shrinkLargeComments = true; //Overwritten if already set. Otherwise, default.
+
+//Global Variables
+var commentContainer = document.getElementById("comments"); //Returns null if no comments.
 //This guy will hold information about the comments. It will be an array of 
 //objects of type comment, defined below.
 var comments = new Array();
+
+//Type Definition for Type comment.
+function comment(idNum, username, divElement){
+	this.idNum = idNum;
+	this.username = username;
+	this.divElement = divElement;
+	this.isNew = false;
+	this.height = 0;
+}
+
 
 /* FUNCTION DEFINITIONS */
 
@@ -31,7 +54,7 @@ function retrieveLocalStorageData(){
 	//is with JSON.
 	if (!localStorage.hiddenList){ //Check for existence.
 		//Let's give folks a default list of characters to hide.
-		localStorage.hiddenList = JSON.stringify(hiddenListDefaults);
+		localStorage.hiddenList = JSON.stringify(hiddenList);
 	}
 	//This is a global variable.
 	hiddenList = JSON.parse(localStorage.hiddenList);
@@ -97,14 +120,28 @@ function retrieveLocalStorageData(){
 			localStorage.trackingReplyBox = "YES";
 		}
 	}
-}
-
-//Object of type comment.
-function comment(idNum, username, divElement){
-	this.idNum = idNum;
-	this.username = username;
-	this.divElement = divElement;
-	this.isNew = false;
+	
+	//Keep track of whether or not to limit height of comments.
+	if(!localStorage.shrinkLargeComments){ //Check for existence.
+		//The default is to not shrink large comments
+		if(shrinkLargeComments) localStorage.shrinkLargeComments = "YES";
+		else localStorage.shrinkLargeComments = "NO";
+	} else{
+		if (localStorage.shrinkLargeComments == "NO"){
+			shrinkLargeComments = false;
+		} else if (localStorage.shrinkLargeComments == "YES") { //A superfluous case, but check it.
+			shrinkLargeComments = true;
+		} else { //Someone's been sleeping in my bed and she's still there!
+			localStorage.shrinkLargeComments = "YES";
+		}
+	}
+	
+	//Keep track of what constitutes a "large" comment
+	if(!localStorage.largeCommentHeight){ //Check for existence.
+		localStorage.largeCommentHeight = (new Number(largeCommentHeight)).toString();
+	} else{
+		largeCommentHeight = parseInt(localStorage.largeCommentHeight);
+	}
 }
 
 //This function waits until elementId is added to the document's
@@ -165,13 +202,27 @@ function toggleVisibility(elementId){
     }
 }
 
-//I need a bunch of helper functions for my controls.
+//Helper functions for controls.
 //Save changes to the hiddenList.
-function saveHiddenList(){
+function saveChanges(){
+	//Save the Hidden List.
 	//Construct an array and save it to localStorage.
 	hiddenList = document.getElementById("UVtxtHiddenList").value.split("\n");
 	if(hiddenList[hiddenList.length - 1] == "") hiddenList.pop();
 	localStorage.hiddenList = JSON.stringify(hiddenList);
+	
+	//Save the largeCommentHeight.
+	var tmpLargeCommentHeight = parseInt(document.getElementById("UVLargeCommentHeight").value);
+	//There needs to be a sanity check.
+	if(tmpLargeCommentHeight > 5 & tmpLargeCommentHeight < 10000){
+		largeCommentHeight = tmpLargeCommentHeight;
+		localStorage.largeCommentHeight = largeCommentHeight;
+	} else{ //The number entered isn't reasonable.
+		alert("Value for the large comment height must be between 5 and 10000.");
+		document.getElementById("UVLargeCommentHeight").value = largeCommentHeight;
+	}
+	
+	resizeComments(); //Execute the changes to Large Comment settings.
 }
 
 //User clicked the always hide checkbox.
@@ -187,11 +238,34 @@ function toggleAlwaysHide(){
 	else localStorage.alwaysHide = "NO";
 }
 
+//User clicked the "Shrink Large Comments" checkbox.
+function toggleShrinkLargeComments(){
+	shrinkLargeComments = !shrinkLargeComments;
+	if(shrinkLargeComments) localStorage.shrinkLargeComments = "YES";
+	else localStorage.shrinkLargeComments = "NO";
+	
+	saveChanges(); //Save any change to large comment height.
+}
+
+
 //User clicked the only show new checkbox.
 function toggleOnlyShowNew(){
-	onlyShowNew = !onlyShowNew;
-	if(onlyShowNew) localStorage.onlyShowNew = "YES";
-	else localStorage.onlyShowNew = "NO";
+	var i;
+
+	if(!onlyShowNew){
+		onlyShowNew = true;
+		localStorage.onlyShowNew = "YES";
+		
+		for(i=0; i < comments.length; i++){
+			if(!(comments[i].isNew)){
+				 document.getElementById("UVComment" + comments[i].idNum).style.display="none";
+			}
+		}
+		
+	} else {
+		onlyShowNew = false;
+		localStorage.onlyShowNew = "NO";
+	}
 }
 
 //User clicked the always jump to new checkbox.
@@ -269,12 +343,13 @@ function addUVEventHandlers(){
 	var strHiddenListXDivId;
 	var splitData;
 
-	//Hook up the comment control bar.
+	//Hook up the comment control bar and "Read More" buttons.
 	for(i = 0; i < comments.length; i++){
 		strCommentDivId = "UVComment" + comments[i].idNum;
 		strHiddenListMenuDivId = "UVHiddenListMenu" + comments[i].idNum;
 		strShowHideAnchorId = "UVShowHideAnchor" + comments[i].idNum;
 		strHiddenListXDivId = "UVXDiv" + comments[i].idNum;	
+		strReadTheRestId = "UVReadTheRest" + comments[i].idNum;
 		
 		//Click the show/hide link.
 		safeAddEventListener(strShowHideAnchorId, "click", function()
@@ -299,10 +374,24 @@ function addUVEventHandlers(){
 			{
 				//We have set the onclick event to store info in a hidden
 				//div called UVCommunicate. First token is username, second is strHiddenListMenuDivId.
-				var strTemp = getInnerText(document.getElementById("UVCommunicate"));
-				splitData = strTemp.split("?"); //Note that "?" is not allowed in usernames.
+				//Note that "?" is not allowed in usernames.
+				var splitData = getInnerText(document.getElementById("UVCommunicate")).split("?");
 				addUsernameToHiddenList(splitData[0]);
 				toggleVisibility(splitData[1]);
+			});
+			
+		//Click the "Read More" link.
+		safeAddEventListener(strReadTheRestId, "click", function()
+			{
+				//We have set the onclick event to store info in a hidden
+				//div called UVCommunicate.
+				var splitData = getInnerText(document.getElementById("UVCommunicate")).split("?");
+				//Hide the "Read More" link. We don't need it.
+				toggleVisibility(splitData[0]);
+				//Resize the comment.
+				var comment = document.getElementsByClassName("comment-content")[parseInt(splitData[1])];
+				comment = comment.getElementsByClassName("content")[0];
+				comment.style.height = "auto";
 			});
 	}
 	
@@ -311,7 +400,8 @@ function addUVEventHandlers(){
 	safeAddEventListener("UVAlwaysHide", "click", toggleAlwaysHide);
 	safeAddEventListener("UVOnlyShowNew", "click", toggleOnlyShowNew);
 	safeAddEventListener("UVJumpToNew", "click", toggleJumpToNew);
-	safeAddEventListener("UVSaveChanges", "click", saveHiddenList);
+	safeAddEventListener("UVShrinkLargeComments", "click", toggleShrinkLargeComments);
+	safeAddEventListener("UVSaveChanges", "click", saveChanges);
 	
 	safeAddEventListener("UVShowHiddenListed", "click", function()
 		{
@@ -331,7 +421,7 @@ function addUVEventHandlers(){
 		});
 	safeAddEventListener("UVControlMenu", "click", function()
 		{
-			saveHiddenList();
+			saveChanges();
 			toggleVisibility("UVControlInner");
 		});
 	
@@ -342,6 +432,32 @@ function addUVEventHandlers(){
             });
         document.getElementsByClassName("box")[0].style.display = "block";
     }
+}
+
+//Resize the text block of a comment according to it's height, hiding some of it if it's too long.
+function resizeComments(){
+	var i;
+	var comment;
+	//We can't reference the comment block with comments[i].divElement
+	//because when we rewrote the comment html that reference was invalidated
+	//when we changed a bunch of innerHTMLs.		
+	var commentContainers = document.getElementsByClassName("comment-content");
+	
+	for(i = 0; i < comments.length; i++){
+		if(shrinkLargeComments & comments[i].height > largeCommentHeight){
+			comment = commentContainers[i];
+			comment = comment.getElementsByClassName("content")[0];
+			comment.style.overflow = "hidden";
+			comment.style.height = largeCommentHeight + "px";
+			document.getElementById("UVReadTheRest" + comments[i].idNum).style.display = "block";
+		} else{
+			comment = commentContainers[i];
+			comment = comment.getElementsByClassName("content")[0];
+			comment.style.height = "auto";
+			document.getElementById("UVReadTheRest" + comments[i].idNum).style.display = "none";
+		}
+	}
+	
 }
 
 //Collect information about the comments and store it in the comments array.
@@ -355,7 +471,7 @@ function collectCommentInformation(){
 	for(i=0; i < elements.length; i++){
 		if(elements[i].id.match(/comment-/) == "comment-"){
 			idNum = elements[i].id.match(/\d+/);
-			comments.push(new comment(idNum, "", elements[i]));
+			comments.push(new comment(idNum, "", null));
 		}
 	}
 
@@ -367,7 +483,9 @@ function collectCommentInformation(){
 		//Need to strip HTML from this username! Nonregistered users have links for names.
 		//We strip HTML by using innerText/innerContent rather than innerHTML.
 		comments[i].username = getInnerText(elements[i]);
-		comments[i].divElement = elements[i];
+		//The following refers to the "comment-content" div. It contains everything
+		//related to the comment.
+		comments[i].divElement = elements[i].parentNode.parentNode;
 	}
 	//If there are no comments, do not have a tracking reply box.
 	if(0==comments.length) trackingReplyBox = false;
@@ -381,7 +499,9 @@ function rewriteCommentHTML(){
 	var strHiddenListMenuDivId;
 	var strShowHideAnchorId;
 	var strHiddenListXDivId;
+	var strReadTheRestId;
 	var hideThisComment;
+	var subelement;
 	var i;
 
 	for(i = 0; i < comments.length; i++){
@@ -390,6 +510,14 @@ function rewriteCommentHTML(){
 		strHiddenListMenuDivId = "UVHiddenListMenu" + comments[i].idNum;
 		strShowHideAnchorId = "UVShowHideAnchor" + comments[i].idNum;
 		strHiddenListXDivId = "UVXDiv" + comments[i].idNum;
+		strReadTheRestId = "UVReadTheRest" + comments[i].idNum;
+		
+		//Record the height of the comment text.
+		subelement = comments[i].divElement.getElementsByClassName("content")[0];
+		comments[i].height = subelement.offsetHeight;
+		//Set the float property of the reply link.
+		subelement = comments[i].divElement.getElementsByClassName("comment_reply first last")[0];
+		subelement.style.float = "left";
 		
 		//I don't think I ever use the id of this div, but whatever.
 		strNewHTML = "<div id='UVCommentBar" + comments[i].idNum + "' >";
@@ -422,7 +550,7 @@ function rewriteCommentHTML(){
 		strNewHTML += "<div id='" + strCommentDivId + "'";
 			
 		//Check if it's a new comment.
-		if(comments[i].divElement.parentNode.parentNode.innerHTML.match("<span class=\"new\">New</span>")){
+		if(comments[i].divElement.innerHTML.match("<span class=\"new\">New</span>")){
 			comments[i].isNew = true;
 		} else{
 			comments[i].isNew = false;
@@ -436,11 +564,22 @@ function rewriteCommentHTML(){
 		if(hideThisComment) strNewHTML += " style='display:none'";
 		
 		strNewHTML += " >";
-		strNewHTML += comments[i].divElement.parentNode.parentNode.innerHTML;
+		strNewHTML += comments[i].divElement.innerHTML;
+		
+		
+		//Read More button
+		strNewHTML += "<div id='" + strReadTheRestId + "' style='text-align:center;display:none;'>";
+		strNewHTML += "<a style='text-decoration:none'";
+		strNewHTML += " href='javascript:;' ";
+		strNewHTML += "onclick='document.getElementById(\"UVCommunicate\").innerHTML=\"";
+		strNewHTML += strReadTheRestId + "?" + i + "\";'>"
+		strNewHTML += "&darr; Read the rest of " + comments[i].username + "'s comment. . . &darr;</a></div>";
+		
+		//End the hide-able part.
 		strNewHTML += "</div>";
 		
 		//Replace the div's innnerHTML.
-		comments[i].divElement.parentNode.parentNode.innerHTML = strNewHTML;
+		comments[i].divElement.innerHTML = strNewHTML;
 	}
 }
 
@@ -464,39 +603,48 @@ function writeControlBoxHTML(){
 	//Always hide hiddenList.
 	strControls += "<input type='checkbox' id='UVAlwaysHide' value='YES'"
 	if(alwaysHide) strControls += " checked ";
-	strControls += "/> Always hide comments by people on my Hidden List.<br><br>";
+	strControls += "/> Always hide comments by people on my Hidden List.<br>";
 	
 	//Show only new comments.
 	strControls += "<input type='checkbox' id='UVOnlyShowNew' value='YES'"
 	if(onlyShowNew) strControls += " checked ";
-	strControls += "/> Only show new comments.<br><br>";
+	strControls += "/> Only show new comments.<br>";
 	
 	//Always jump to new comments.
 	strControls += "<input type='checkbox' id='UVJumpToNew' value='YES'"
 	if(jumpToNew) strControls += " checked ";
-	strControls += "/> Always jump to new comments.<br><br>";
+	strControls += "/> Always jump to new comments.<br>";
 	
 	//Floating "Add your comment" box.
 	strControls += "<input type='checkbox' id='UVTrackingReplyBox' value='YES'"
-	if("YES" == localStorage.trackingReplyBox) strControls += " checked ";
-	strControls += "/> Floating Comment Box. (Takes effect on refresh.)<br><br>";
+	if(trackingReplyBox) strControls += " checked ";
+	strControls += "/> Floating Comment Box. (Takes effect on refresh.)<br>";
+
+	//Shrink large comments.
+	strControls += "<input type='checkbox' id='UVShrinkLargeComments' value='YES'"
+	if(shrinkLargeComments) strControls += " checked ";
+	strControls += "/> Shrink comments larger than ";
+	strControls += "<input type='text' id='UVLargeCommentHeight' style='border:1px solid;width:3em'";
+	strControls += " value='" + largeCommentHeight + "' /> pixels.<br>";
 	
 	//Hidden List
-	strControls += "Hidden List:<br>";
-	strControls += "<textarea id='UVtxtHiddenList' rows='10' cols='10' style='width:190px;border:1px solid #000000'>"; //Remember to override Spectrum's css.
+	strControls += "Hidden List:";
+	
+	//Save Changes.
+	strControls += "<div style='float:right'><a href='javascript:;' id='UVSaveChanges' style='text-decoration:none;'>Save Changes</a></div><br>";
+
+	strControls += "<textarea id='UVtxtHiddenList' rows='7' cols='10' style='width:250px;border:1px solid #000000'>"; //Remember to override Spectrum's css.
 	for(j = 0; j < hiddenList.length; j++){
 		strControls += hiddenList[j] + "\n"
 	}
 	strControls += "</textarea><br>";
-	strControls += "(One username per line. Things like spaces and caps matter!)<br>";
-	//Save Changes.
-	strControls += "<a href='javascript:;' id='UVSaveChanges' style='text-decoration:none;'>Save changes</a><br><br>";
+	strControls += "(One username per line. Things like spaces and caps matter!)<br><br>";
 	
 	//Expand/contract various.
-	strControls += "Comments on Hidden List: <br>&nbsp;&nbsp;&nbsp;&nbsp;<a id='UVShowHiddenListed' href='javascript:;' style='text-decoration:none;'>Show</a>&nbsp;-&nbsp;";
-	strControls += "<a id='UVHideHiddenListed' href='javascript:;' style='text-decoration:none;'>Hide</a><br>";
-	strControls += "All comments: <br>&nbsp;&nbsp;&nbsp;&nbsp;<a id='UVShowAll' href='javascript:;' style='text-decoration:none;'>Show</a>&nbsp;-&nbsp;";
-	strControls += "<a id='UVHideAll' href='javascript:;' style='text-decoration:none;'>Hide</a><br>";
+	strControls += "Comments on Hidden List:<div style='float:right'><a id='UVShowHiddenListed' href='javascript:;' style='text-decoration:none;'>Show</a>&nbsp;-&nbsp;";
+	strControls += "<a id='UVHideHiddenListed' href='javascript:;' style='text-decoration:none;'>Hide</a></div><br>";
+	strControls += "All comments:<div style='float:right'><a id='UVShowAll' href='javascript:;' style='text-decoration:none;'>Show</a>&nbsp;-&nbsp;";
+	strControls += "<a id='UVHideAll' href='javascript:;' style='text-decoration:none;'>Hide</a></div><br>";
 
 	//END Inner Control Box HTML
 	strControls += "</div>";
@@ -512,7 +660,7 @@ function writeControlBoxHTML(){
 	//Control Box
 	strNewHTML += "<div id='UVControl' style='";
 	strNewHTML += "position:fixed;"; //This is the magic property value that makes it float.
-	strNewHTML += "width:230px;height:50px;left:10px;top:20px;z-index:10;";
+	strNewHTML += "width:300px;height:50px;left:10px;top:20px;z-index:10;";
 	strNewHTML += "'>";
 	strNewHTML += strControls; //Hidden until clicked.
 	strNewHTML += "</div>";
@@ -559,9 +707,18 @@ if(commentContainer){
 	//The code has been factored into a series of functions to make this script readable.
 	retrieveLocalStorageData();
 	collectCommentInformation();
-	rewriteCommentHTML();
+	rewriteCommentHTML(); //NOTE: Invalidates comments[i].divElement reference!
 	writeControlBoxHTML();
 	rewriteReplyBoxHTML();
+	resizeComments();
+	
+	/*
+		We add a "read the rest of this comment" button to every comment, but hide them all. 
+		resizeComments checks everyone's height, then changes the height and visibility
+		according to the rules/settings. This way we can change the setting without a reload.
+	*/
+	//resizeComments(comments[2].divElement);
+	
 	
 	//We're done changing the contents of the page. Scroll the page to new comments.
 	if(jumpToNew){
@@ -570,5 +727,5 @@ if(commentContainer){
 	}
 	
 	addUVEventHandlers();
-
+	
 }
