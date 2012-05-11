@@ -479,6 +479,7 @@ function collectCommentInformation(){
 	//They are stored in a span tag with a conveniently marked classname.
 	//elements = document.getElementsByTagName("span");
 	elements = document.getElementsByClassName("username");
+	alert(elements.length);
 	for(i=0; i < elements.length; i++){
 		//Need to strip HTML from this username! Nonregistered users have links for names.
 		//We strip HTML by using innerText/innerContent rather than innerHTML.
@@ -517,7 +518,11 @@ function rewriteCommentHTML(){
 		comments[i].height = subelement.offsetHeight;
 		//Set the float property of the reply link.
 		subelement = comments[i].divElement.getElementsByClassName("comment_reply first last")[0];
-		subelement.style.float = "left";
+		if(subelement) subelement.style.float = "left";
+		subelement = comments[i].divElement.getElementsByClassName("comment_reply last")[0];
+		if(subelement) subelement.style.float = "left";
+		subelement = comments[i].divElement.getElementsByClassName("comment_reply first")[0];
+		if(subelement) subelement.style.float = "left";
 		
 		//I don't think I ever use the id of this div, but whatever.
 		strNewHTML = "<div id='UVCommentBar" + comments[i].idNum + "' >";
