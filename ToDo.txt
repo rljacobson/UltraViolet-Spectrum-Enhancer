@@ -1,12 +1,3 @@
-* Unify the Firefox and Chrome/Safari codebase.
-* Refactor so that most code happens in functions.
+Add the control box with addNode().
 
-BUGS:
-
-1. UVHiddenListMenu122569 showing up in the Hidden List somehow.
-http://spectrummagazine.org/blog/2012/02/15/new-browser-extension-enhances-spectrum-commenting#comment-123371
-I cannot reproduce this. It probably has to do with the calling order of event listeners. Not sure how to fix it. 
-
-FEATURES:
-
-* Put "Add your comment" on the sidebar and have it float.
+Rewrite addUsernameToHiddenList.
