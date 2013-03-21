@@ -18,13 +18,18 @@
 
 //Constants
 var DOM_WAIT = 200; //How many milliseconds to wait for browser to construct DOM.
+var MONITOR_COMMENTS_WAIT = 5000; //Millis to wait between checking for new comments.
+var CHECK_DISQUS_WAIT = 1000; //Millis to wait between checking for Disqus content.
 
 //Global Variables and Their Defaults
+//var hiddenList = ["Bicycle Truth"];
 var hiddenList = ["Bicycle Truth"];
 var alwaysHide = true; //Overwritten if already set. Otherwise, default.
 
 //Global Variables
-var commentContainer = document.getElementById("dsq-content"); //Returns null if no comments.
+var checkForDisqusInterval;
+var monitorCommentsInterval;
+
 
 
 /* FUNCTION DEFINITIONS */
@@ -58,8 +63,17 @@ function retrieveLocalStorageData(){
 
 }
 
+
+/*
+ The point of safeAddEventListener() is a little technical. We write custom
+ HTML to the page which has to communicate to our script. Problem is, javascript
+ that we write to the page cannot call functions in this script--at least not
+ directly. Thus we add event listeners after the fact that CAN call functions in this
+ script directly. BUT we have to wait until the browser has attached to the DOM
+ all the HTML that we've written out before we can attach an event listener.
+ */
 //This function waits until elementId is added to the document's
-//DOM to add the event listener. 
+//DOM to add the event listener.
 function safeAddEventListener(elementId, event, funct){
 	if(document.getElementById(elementId)){
 		//The dynamically created elements have been attached to the document's
@@ -82,7 +96,7 @@ function getInnerText(elem){
 	return elem.textContent;
 }
 
-//Returns true if elmnt is a member of array, false otherwise.
+//Returns true if element is a member of array, false otherwise.
 function memberOf(element, array){
 	var i = 0;
 	for (i=0; i < array.length; i++){
@@ -91,7 +105,7 @@ function memberOf(element, array){
 	return false;
 }
 
-//Toggles the div to either hidden or visible.
+//Toggles the display style of the element to either hidden or visible.
 function toggleVisibility(elementId){
     if(document.getElementById(elementId).style.display == 'none'){
       document.getElementById(elementId).style.display = 'block';
@@ -117,17 +131,36 @@ function toggleAlwaysHide(){
 	else localStorage.alwaysHide = "NO";
 }
 
+//Collapse a particular comment.
+function toggleComment(comment, expanding){
+    //The following is a regExp that matches the text, "dsq-comment-is-collapsed".
+    var patternCollapsed = /dsq-comment-is-collapsed/;
+    
+    //patternCollapsed.test() returns true if pattern is found, false otherwise.
+    var patternMatched = patternCollapsed.test(comment.className);
+    
+    //We only collapse comments that are uncollapsed and expand comments collapsed.
+    if(!patternMatched && !expanding){
+        //If the comment is not already collapsed, collapse this comment.
+        comment.className += " dsq-comment-is-collapsed";
+    } else if(patternMatched && expanding){
+        //var str = comment.className;
+        comment.className = comment.className.replace(patternCollapsed, '');
+    }
+}
 
 //Expand or hide all comments on Hidden List.
 function showHiddenListed(expanding){
-	var j = 0;
-	var isElement = false;
-	var strDisplayProperty = "none";
-	if(expanding) strDisplayProperty = "block";
+    var j;
+    var comments = document.getElementsByClassName("dsq-comment");
+    var authorName;
+    
 	for(j=0; j < comments.length; j++){
-		isElement = memberOf(comments[j].username, hiddenList);
-		if(isElement){
-			document.getElementById("UVComment" + comments[j].idNum).style.display = strDisplayProperty;
+        //Get the comment's author name.
+        authorName = getInnerText(comments[j].getElementsByClassName("dsq-commenter-name")[0]);
+        //If the author is on the hidden list, hide/show the comment.
+        if(memberOf(authorName, hiddenList)){
+            toggleComment(comments[j], expanding);
 		}
 	}
 }
@@ -135,33 +168,40 @@ function showHiddenListed(expanding){
 //Expand or hide all comments.
 function showAllComments(expanding){
 	var j = 0;
-	var strDisplayProperty = "none";
-	if(expanding) strDisplayProperty = "block";
+    var comments = document.getElementsByClassName("dsq-comment");
+
 	for(j=0; j < comments.length; j++){
-		document.getElementById("UVComment" + comments[j].idNum).style.display = strDisplayProperty;
+		toggleComment(comments[j], expanding);
 	}
 }
 
 //Add a username to the Hidden List.
 function addUsernameToHiddenList(newUsername){
+    var authorName;
 	var j = 0;
-	var isElement = memberOf(newUsername, hiddenList);
-	var listString = document.getElementById("UVtxtHiddenList").value;
-
+    var comments = document.getElementsByClassName("dsq-comment");
+    
 	//Collapse all comments by that username.
 	for(j=0; j < comments.length; j++){
-		if(comments[j].username == newUsername){
-			document.getElementById("UVComment" + comments[j].idNum).style.display = "none";
+        //Get the authorname for this comment.
+        authorName = getInnerText(comments[j].getElementsByClassName("dsq-commenter-name")[0]);
+        
+		if(authorName == newUsername){
+			toggleComment(comments[j], false); //False means collapse.
 		}
 	}	
 	
-	if(isElement) return; //User is already Hidden Listed.
+    
+    //Is the new user already on the hidden list? If so, we're done.
+	if(memberOf(newUsername, hiddenList)) return;
+    
+    //Add the new Username to the hidden list.
 	hiddenList.push(newUsername);
-
 	//Save changes to the hiddenList in the localStorage.
 	localStorage.hiddenList = JSON.stringify(hiddenList);
 	
 	//Update UVtxtHiddenList to reflect our changes.
+    var listString = document.getElementById("UVtxtHiddenList").value;
 	//We have to check for newline. grr...
 	if(listString.length==0 | listString.charAt(listString.length - 1)=="\n"){
 		document.getElementById("UVtxtHiddenList").value += newUsername;
@@ -169,72 +209,15 @@ function addUsernameToHiddenList(newUsername){
 		document.getElementById("UVtxtHiddenList").value += ("\n" + newUsername);
 	}
 }
-
-/*
-	The point of addUVEventListeners() is a little technical. We write custom
-	HTML to the page which has to communicate to our script. Problem is, javascript 
-	that we write to the page cannot call functions in this script--at least not 
-	directly. Thus we add event listeners after the fact that CAN call functions in this
-	script directly. BUT we have to wait until the browser has attached to the DOM 
-	all the HTML that we've written out before we can attach an event listener. 
-*/
-function addUVEventHandlers(){
-	var i;
-	var xButtons = document.getElementsByClassName("UVXButton");
-
-	//Hook up the comment control bar and "Read More" buttons.
-	for(i = 0; i < xButtons.length; i++){
-		//Click the "X" menu to add a user to the hidden list.
-		safeAddEventListener(xButtons[i], "click", function()
-			{
-				//We have set the onclick event to store info in a hidden
-				//div called UVCommunicate.
-				var strTemp = getInnerText(document.getElementById("UVCommunicate"));
-				//Ask the user if they really want to hide the user.
-				if(confirm("Do you really want to add " + strTemp + " to the Hidden List?")){
-					addUsernameToHiddenList(strTemp);
-				}
-			});
-
-	}
-	
-	//Hook up the event listeners for the Settings Menu.
-	safeAddEventListener("UVAlwaysHide", "click", toggleAlwaysHide);
-	safeAddEventListener("UVSaveChanges", "click", saveChanges);
-	
-	safeAddEventListener("UVShowHiddenListed", "click", function()
-		{
-			showHiddenListed(true);
-		});
-	safeAddEventListener("UVHideHiddenListed", "click", function()
-		{
-			showHiddenListed(false);
-		});
-	safeAddEventListener("UVShowAll", "click", function()
-		{
-			showAllComments(true);
-		});
-	safeAddEventListener("UVHideAll", "click", function()
-		{
-			showAllComments(false);
-		});
-	safeAddEventListener("UVControlMenu", "click", function()
-		{
-			saveChanges();
-			toggleVisibility("UVControlInner");
-		});
-	
-}
-
+ 
 //Rewrite the HTML for the comments. 
-function rewriteCommentHTML(){
+function monitorComments(){
 	var authorNode;
 	var authorName;
 	var xNode
 	var i;
 	var comments = document.getElementsByClassName("dsq-comment");
-    //The following is a regExp that matches the text, "dsq-comment-is-collapsed".
-    var patternCollapsed = /dsq-comment-is-collapsed/;
+
 
 	for(i = 0; i < comments.length; i++){
 		//Add an X menu to each comment right before the author node.
@@ -244,33 +227,44 @@ function rewriteCommentHTML(){
 		//Get the comment's author node.
 		authorNode = comments[i].getElementsByClassName("dsq-commenter-name")[0];
 		authorName = getInnerText(authorNode);
-		
+        
+        //If we have previously attached an "X" menu and hidden (or not) the comment,
+        //then there is nothing to do, so continue to the next comment.
+        if(0 != comments[i].getElementsByClassName("UVXButton").length) continue;
+        
 		//<a href='javascript:;' class='UVXButton' style='text-decoration:none;'>X</a>
 		xNode = document.createElement('a');
-		xNode.appendChild(document.createTextNode("X"));
+		xNode.appendChild(document.createTextNode("X "));
 		xNode.setAttribute("class", "UVXButton");
 		xNode.setAttribute("href", "javascript:;");
 		xNode.setAttribute("style", "text-decoration:none;");
-        xNode.setAttribute("onclick", "onclick='document.getElementById(\"UVCommunicate\").innerHTML=\"" + authorName + "\";'>");
-		
+        //xNode.setAttribute("onclick", "onclick='document.getElementById(\"UVCommunicate\").innerHTML=\"" + authorName + "\";'>");
+        xNode.setAttribute("onclick", "document.getElementById(\"UVCommunicate\").innerHTML=\"" + authorName + "\";");
+		//alert(\"clicked\");
 
-		comments[i].insertBefore(xNode, authorNode);
-	
+        authorNode.parentNode.insertBefore(xNode, authorNode);
+        
+        //Click the "X" menu to add a user to the hidden list.
+		//safeAddEventListener(xNode, "click", function()
+        xNode.addEventListener("click", function()
+                             {
+                                 //We have set the onclick event to store info in a hidden
+                                 //div called UVCommunicate.
+                                 var strTemp = getInnerText(document.getElementById("UVCommunicate"));
+                                 //Ask the user if they really want to hide the user.
+                                 if(confirm("Do you really want to add " + strTemp + " to the Hidden List?")){
+                                    addUsernameToHiddenList(strTemp);
+                                 }
+                             }, false);
+
 		//Hide comments from authors on the Hidden List
-
-        //patternCollapsed.test() returns true if pattern is found, false otherwise.
-        if(!patternCollapsed.test(comments[i].className) && memberOf(authorName, hiddenList) ){
-            //If the comment is not already collapsed and the author is on the hidden list,]
-            //Collapse this comment.
-            comments[i].className += " dsq-comment-is-collapsed";
-        }
-	}
+        if(memberOf(authorName, hiddenList) && alwaysHide) toggleComment(comments[i]);
+    }
 }
 
 //Construct our control box.
 function writeControlBoxHTML(){
 	//First, we set up the inner controls that will be invisible most of the time.
-
 	var j = 0;
 	var strControls;
 	var strNewHTML;
@@ -330,23 +324,68 @@ function writeControlBoxHTML(){
 	//We also need a way to communicate betweeen the scripts on the page and this script. 
 	//We do this with an invisible div.
 	strNewHTML +=  "<div id='UVCommunicate' style='display:none'></div>";
+	//strNewHTML +=  "CHICKEN: <div id='UVCommunicate'></div>";
 
 	//Write out the HTML for our control box.
+    var cbNode;
+    var commentContainer = document.getElementById("dsq-content");
+    cbNode = document.createElement('div');
+    cbNode.innerHTML = strNewHTML;
+    commentContainer.parentNode.appendChild(cbNode);
     
-	commentContainer.innerHTML = commentContainer.innerHTML + strNewHTML;
+    
+    //Hook up the event listeners for the Settings Menu.
+	safeAddEventListener("UVAlwaysHide", "click", toggleAlwaysHide);
+	safeAddEventListener("UVSaveChanges", "click", saveChanges);
+	
+	safeAddEventListener("UVShowHiddenListed", "click", function()
+                         {
+                         showHiddenListed(true);
+                         });
+	safeAddEventListener("UVHideHiddenListed", "click", function()
+                         {
+                         showHiddenListed(false);
+                         });
+	safeAddEventListener("UVShowAll", "click", function()
+                         {
+                         showAllComments(true);
+                         });
+	safeAddEventListener("UVHideAll", "click", function()
+                         {
+                         showAllComments(false);
+                         });
+	safeAddEventListener("UVControlMenu", "click", function()
+                         {
+                         saveChanges();
+                         toggleVisibility("UVControlInner");
+                         });
+    
+}
+
+//Monitors the DOM looking for an element with id="dsq-content".
+function checkForDisqus(){
+    var commentContainer = document.getElementById("dsq-content");
+
+    //If there is Disqus content, commentContainer will not be null.
+    if(null != commentContainer){
+        //Stop checking.
+        clearInterval(checkForDisqusInterval);
+        writeControlBoxHTML();
+        
+        monitorCommentsInterval = setInterval(monitorComments, MONITOR_COMMENTS_WAIT);
+    }
 }
 
 
 
 /* CODE */
 
-//Only do anything if there is a comments section on this page.
-if(commentContainer){
-	//The code has been factored into a series of functions to make this script readable.
-	retrieveLocalStorageData();
-	rewriteCommentHTML(); //NOTE: Invalidates comments[i].divElement reference!
-	writeControlBoxHTML();
-	
-	addUVEventHandlers();
-	
-}
+/*
+    Because Disqus content is loaded dynamically, we need to monitor the DOM to 
+    determine when changes are made. The first change we monitor for is whether or not
+    there is any Disqus content on the page. If there is Disqus content, we need to 
+    enable the Control Box and begin monitoring the comments that Disqus loads. It is
+    the job of checkForDisqus() to do what needs to be done if there is Disqus content.
+*/
+checkForDisqusInterval = setInterval(checkForDisqus, CHECK_DISQUS_WAIT);
+

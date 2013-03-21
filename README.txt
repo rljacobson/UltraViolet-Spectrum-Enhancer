@@ -1,3 +1,7 @@
+NEW IN VERSION 3.0
+The new Disqus commenting system required a rewrite of the extension, and many features of the previous version were made obsolete or difficult to implement. The current extension includes the following features:
+* ??
+
 NEW IN VERSION 2.0
 New features:
 * Option to have "Add your comment" float on the sidebar.
@@ -21,7 +25,7 @@ New features:
 
 ABOUT
 
-UltraViolet Spectrum Enhancer provides a show/hide button on every comment. It also puts a "direct link" by each comment, too. You can make a "Hidden List" of usernames whose comments are always hidden by default. Add a username to the Hidden List by clicking the "X" on the upper right of a comment. To edit the Hidden List and other settings, click the "UV" floating in the upper right corner of the page.
+You can make a "Hidden List" of usernames whose comments are always hidden by default. Add a username to the Hidden List by clicking the "X" on the upper left of a comment. To edit the Hidden List and other settings, click the "UV" floating in the upper right corner of the page.
 
 Google Chrome:
 https://github.com/downloads/rljacobson/UltraViolet-Spectrum-Enhancer/UltraViolet.crx
