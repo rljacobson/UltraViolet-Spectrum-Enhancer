@@ -16,10 +16,19 @@
 
 /* GLOBAL VARIABLE DECLARATIONS */
 
+var onlyOnce = 0;
+
 //Constants
 var DOM_WAIT = 200; //How many milliseconds to wait for browser to construct DOM.
 var MONITOR_COMMENTS_WAIT = 5000; //Millis to wait between checking for new comments.
 var CHECK_DISQUS_WAIT = 1000; //Millis to wait between checking for Disqus content.
+
+//Disqus class names
+var DSQ_POST_CLASS = "post";
+var DSQ_AUTHOR_NAME_NODE_CLASS = "publisher-anchor-color";
+var DSQ_THREAD_ID = "post-list";
+var DSQ_COLLAPSED_CLASS = "collapsed";
+var DSQ_CONTROL_BOX_LOCATION_NODE_ID = "main-nav";
 
 //Global Variables and Their Defaults
 //var hiddenList = ["Bicycle Truth"];
@@ -133,8 +142,8 @@ function toggleAlwaysHide(){
 
 //Collapse a particular comment.
 function toggleComment(comment, expanding){
-    //The following is a regExp that matches the text, "dsq-comment-is-collapsed".
-    var patternCollapsed = /dsq-comment-is-collapsed/;
+    //The following is a regExp that matches the text, DSQ_COLLAPSED_CLASS.
+    var patternCollapsed = /collapsed/;
     
     //patternCollapsed.test() returns true if pattern is found, false otherwise.
     var patternMatched = patternCollapsed.test(comment.className);
@@ -142,7 +151,7 @@ function toggleComment(comment, expanding){
     //We only collapse comments that are uncollapsed and expand comments collapsed.
     if(!patternMatched && !expanding){
         //If the comment is not already collapsed, collapse this comment.
-        comment.className += " dsq-comment-is-collapsed";
+        comment.className += " " + DSQ_COLLAPSED_CLASS;
     } else if(patternMatched && expanding){
         //var str = comment.className;
         comment.className = comment.className.replace(patternCollapsed, '');
@@ -152,12 +161,12 @@ function toggleComment(comment, expanding){
 //Expand or hide all comments on Hidden List.
 function showHiddenListed(expanding){
     var j;
-    var comments = document.getElementsByClassName("dsq-comment");
+    var comments = document.getElementsByClassName(DSQ_POST_CLASS);
     var authorName;
     
 	for(j=0; j < comments.length; j++){
         //Get the comment's author name.
-        authorName = getInnerText(comments[j].getElementsByClassName("dsq-commenter-name")[0]);
+        authorName = getInnerText(comments[j].getElementsByClassName(DSQ_AUTHOR_NAME_NODE_CLASS)[0]);
         //If the author is on the hidden list, hide/show the comment.
         if(memberOf(authorName, hiddenList)){
             toggleComment(comments[j], expanding);
@@ -168,7 +177,7 @@ function showHiddenListed(expanding){
 //Expand or hide all comments.
 function showAllComments(expanding){
 	var j = 0;
-    var comments = document.getElementsByClassName("dsq-comment");
+    var comments = document.getElementsByClassName(DSQ_POST_CLASS);
 
 	for(j=0; j < comments.length; j++){
 		toggleComment(comments[j], expanding);
@@ -179,12 +188,12 @@ function showAllComments(expanding){
 function addUsernameToHiddenList(newUsername){
     var authorName;
 	var j = 0;
-    var comments = document.getElementsByClassName("dsq-comment");
+    var comments = document.getElementsByClassName(DSQ_POST_CLASS);
     
 	//Collapse all comments by that username.
 	for(j=0; j < comments.length; j++){
         //Get the authorname for this comment.
-        authorName = getInnerText(comments[j].getElementsByClassName("dsq-commenter-name")[0]);
+        authorName = getInnerText(comments[j].getElementsByClassName(DSQ_AUTHOR_NAME_NODE_CLASS)[0]);
         
 		if(authorName == newUsername){
 			toggleComment(comments[j], false); //False means collapse.
@@ -216,16 +225,22 @@ function monitorComments(){
 	var authorName;
 	var xNode
 	var i;
-	var comments = document.getElementsByClassName("dsq-comment");
+	var comments = document.getElementsByClassName(DSQ_POST_CLASS);
 
-
+    /*
+    if(onlyOnce < 5){
+        window.alert("comments found: " + comments.length);
+        onlyOnce++;
+    }
+    */
+    
 	for(i = 0; i < comments.length; i++){
 		//Add an X menu to each comment right before the author node.
 
         // commentId given by comments[i].dataset.dsqCommentId
         
 		//Get the comment's author node.
-		authorNode = comments[i].getElementsByClassName("dsq-commenter-name")[0];
+		authorNode = comments[i].getElementsByClassName(DSQ_AUTHOR_NAME_NODE_CLASS)[0];
 		authorName = getInnerText(authorNode);
         
         //If we have previously attached an "X" menu and hidden (or not) the comment,
@@ -281,7 +296,7 @@ function writeControlBoxHTML(){
 	//Always hide hiddenList.
 	strControls += "<input type='checkbox' id='UVAlwaysHide' value='YES'"
 	if(alwaysHide) strControls += " checked ";
-	strControls += "/> Always hide comments by people on my Hidden List.<br>";
+	strControls += "/> Always hide comments by people on my Hidden List.<br><br>";
 	
 	//Hidden List
 	strControls += "Hidden List:";
@@ -308,15 +323,19 @@ function writeControlBoxHTML(){
 	//Control Box Toggler
 	strNewHTML = "";
 	strNewHTML += "<div style='";
-	strNewHTML += "position:fixed;"; //This is the magic property value that makes it float.
-	strNewHTML += "width:30px;height:10px;left:10px;top:0px;z-index:10;";
+	//strNewHTML += "position:fixed;"; //This is the magic property value that makes it float.
+	//strNewHTML += "width:30px;height:10px;left:10px;top:0px;z-index:100;";
+    strNewHTML += "width:30px;height:10px;z-index:1000;";
 	strNewHTML += "'>";
 	strNewHTML += "<a id='UVControlMenu' href='javascript:;' style='text-align:center;text-decoration:none;color:#FFFFFF;background-color:#C0C0C0;border: 1px solid black'>&nbsp;UV&nbsp;</a> "
 	strNewHTML += "</div>";
 	//Control Box
 	strNewHTML += "<div id='UVControl' style='";
-	strNewHTML += "position:fixed;"; //This is the magic property value that makes it float.
-	strNewHTML += "width:300px;height:50px;left:10px;top:20px;z-index:10;";
+	//strNewHTML += "position:fixed;"; //This is the magic property value that makes it float.
+	//strNewHTML += "width:300px;height:50px;left:10px;top:20px;z-index:100;";
+    strNewHTML += "position:relative;"; //This is the magic property value that makes it float.
+	strNewHTML += "width:300px;height:10px;left:0px;top:20px;z-index:1000;";
+
 	strNewHTML += "'>";
 	strNewHTML += strControls; //Hidden until clicked.
 	strNewHTML += "</div>";
@@ -328,10 +347,10 @@ function writeControlBoxHTML(){
 
 	//Write out the HTML for our control box.
     var cbNode;
-    var commentContainer = document.getElementById("dsq-content");
+    var locationNode = document.getElementById(DSQ_CONTROL_BOX_LOCATION_NODE_ID);
     cbNode = document.createElement('div');
     cbNode.innerHTML = strNewHTML;
-    commentContainer.parentNode.appendChild(cbNode);
+    locationNode.parentNode.insertBefore(cbNode, locationNode); //appendChild(cbNode);
     
     
     //Hook up the event listeners for the Settings Menu.
@@ -362,14 +381,18 @@ function writeControlBoxHTML(){
     
 }
 
-//Monitors the DOM looking for an element with id="dsq-content".
+//Monitors the DOM looking for an element with id=DSQ_THREAD_ID.
 function checkForDisqus(){
-    var commentContainer = document.getElementById("dsq-content");
+    var commentContainer = document.getElementById(DSQ_THREAD_ID);
 
     //If there is Disqus content, commentContainer will not be null.
     if(null != commentContainer){
+
         //Stop checking.
         clearInterval(checkForDisqusInterval);
+        
+        retrieveLocalStorageData();
+        
         writeControlBoxHTML();
         
         monitorCommentsInterval = setInterval(monitorComments, MONITOR_COMMENTS_WAIT);
@@ -388,4 +411,3 @@ function checkForDisqus(){
     the job of checkForDisqus() to do what needs to be done if there is Disqus content.
 */
 checkForDisqusInterval = setInterval(checkForDisqus, CHECK_DISQUS_WAIT);
-
