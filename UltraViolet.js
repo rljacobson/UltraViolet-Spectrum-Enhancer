@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name          UltraViolet Spectrum Enhancer
 // @namespace     RobertJacobson
-// @description	  Adds features to the comments section of SpectrumMagazine.org.
-// @include       http://spectrummagazine.org/*
-// @include       https://spectrummagazine.org/*
-// @include       http://www.spectrummagazine.org/*
-// @include       https://www.spectrummagazine.org/*
+// @description	  Adds features to Disqus comments.
+// @include       http://disqus.com/*
+// @include       https://disqus.com/*
+// @include       http://www.disqus.com/*
+// @include       https://www.disqus.com/*
 // ==/UserScript==
 
 /*
@@ -29,6 +29,9 @@ var DSQ_AUTHOR_NAME_NODE_CLASS = "publisher-anchor-color";
 var DSQ_THREAD_ID = "post-list";
 var DSQ_COLLAPSED_CLASS = "collapsed";
 var DSQ_CONTROL_BOX_LOCATION_NODE_ID = "main-nav";
+var DSQ_COLLAPSED_CLASS_DICTIONARY = [["post", "collapsed"], ["message-shadow", "hidden"], ["more-button", "hidden"]];
+var DSQ_READ_MORE_CLASS = "post-message-container";
+var DSQ_READ_MORE_CLASS_VISIBLE = "post-message-collapse";
 
 //Global Variables and Their Defaults
 //var hiddenList = ["Bicycle Truth"];
@@ -142,19 +145,67 @@ function toggleAlwaysHide(){
 
 //Collapse a particular comment.
 function toggleComment(comment, expanding){
-    //The following is a regExp that matches the text, DSQ_COLLAPSED_CLASS.
-    var patternCollapsed = /collapsed/;
+    var alreadyCollapsed = true;
+    var j;
+    var childNodeList;
+    var childNode;
     
     //patternCollapsed.test() returns true if pattern is found, false otherwise.
-    var patternMatched = patternCollapsed.test(comment.className);
-    
-    //We only collapse comments that are uncollapsed and expand comments collapsed.
-    if(!patternMatched && !expanding){
+    if(-1==comment.className.indexOf(DSQ_COLLAPSED_CLASS_DICTIONARY[0][1])){
+        alreadyCollapsed = false;
+    }
+
+    //We only collapse comments that are uncollapsed and expand comments that are collapsed.
+    if(!alreadyCollapsed && !expanding){
         //If the comment is not already collapsed, collapse this comment.
-        comment.className += " " + DSQ_COLLAPSED_CLASS;
-    } else if(patternMatched && expanding){
-        //var str = comment.className;
-        comment.className = comment.className.replace(patternCollapsed, '');
+        comment.className += " " + DSQ_COLLAPSED_CLASS_DICTIONARY[0][1];
+        
+        //There may be other child nodes whose class names need to be adjusted as well.
+        for(j = 1; j < DSQ_COLLAPSED_CLASS_DICTIONARY.length; j++){
+            childNodeList = comment.getElementsByClassName(DSQ_COLLAPSED_CLASS_DICTIONARY[j][0]);
+            if(0==childNodeList.length) continue; //This means the child node DNE.
+            childNode = childNodeList[0];
+            
+            childNode.className += " " + DSQ_COLLAPSED_CLASS_DICTIONARY[j][1];
+        }
+        
+        //If this comment is a "Read More" comment, we need to do extra work.
+        childNodeList = comment.getElementsByClassName(DSQ_READ_MORE_CLASS);
+        if(childNodeList.length > 0){
+            childNode = childNodeList[0];
+            
+            //Instead of having the container's style hard coded into this script,
+            //we'll just record it here. That way, if it changes in the future we
+            //won't have to change the script.
+            DSQ_READ_MORE_STYLE = childNode.style.height;
+            childNode.style.height = "";
+            //childNode.removeAttribute("style");
+            childNode.className.replace(DSQ_READ_MORE_CLASS_VISIBLE, "");
+        }
+        
+    } else if(alreadyCollapsed && expanding){
+        //If the comment is already collapsed, expand this comment.
+        comment.className = comment.className.replace(DSQ_COLLAPSED_CLASS_DICTIONARY[0][1], "");
+        
+        //There may be other child nodes whose class names need to be adjusted as well.
+        for(j = 1; j < DSQ_COLLAPSED_CLASS_DICTIONARY.length; j++){
+            childNodeList = comment.getElementsByClassName(DSQ_COLLAPSED_CLASS_DICTIONARY[j][0]);
+            if(0==childNodeList.length) continue; //This means the child node DNE.
+            childNode = childNodeList[0];
+            
+            childNode.className.replace(DSQ_COLLAPSED_CLASS_DICTIONARY[j][1], "");
+        }
+        
+        //If this comment is a "Read More" comment, we need to do extra work.
+        childNodeList = comment.getElementsByClassName(DSQ_READ_MORE_CLASS);
+        if(childNodeList.length > 0){
+            childNode = childNodeList[0];
+            
+            //The "constant" DSQ_READ_MORE_STYLE was recorded earlier.
+            childNode.style.height = DSQ_READ_MORE_STYLE;
+            childNode.className += " " + DSQ_READ_MORE_CLASS_VISIBLE;
+        }
+        
     }
 }
 
@@ -252,7 +303,7 @@ function monitorComments(){
 		xNode.appendChild(document.createTextNode("X "));
 		xNode.setAttribute("class", "UVXButton");
 		xNode.setAttribute("href", "javascript:;");
-		xNode.setAttribute("style", "text-decoration:none;");
+		xNode.setAttribute("style", "text-decoration:none;color:rgb(0, 75, 112);");
         //xNode.setAttribute("onclick", "onclick='document.getElementById(\"UVCommunicate\").innerHTML=\"" + authorName + "\";'>");
         xNode.setAttribute("onclick", "document.getElementById(\"UVCommunicate\").innerHTML=\"" + authorName + "\";");
 		//alert(\"clicked\");
@@ -279,6 +330,9 @@ function monitorComments(){
 
 //Construct our control box.
 function writeControlBoxHTML(){
+    /* This whole thing needs to be rewritten. It's unreadable. */
+    
+    
 	//First, we set up the inner controls that will be invisible most of the time.
 	var j = 0;
 	var strControls;
@@ -291,18 +345,20 @@ function writeControlBoxHTML(){
 	strControls += "background-color:#C0C0C0;";
 	strControls += "padding:16px;";
 	strControls += "border:2px solid #000000' >";
-	strControls += "<u><strong>UltraViolet Spectrum Settings</strong></u><br><br>";
+	strControls += "<u><strong>UltraViolet Spectrum Settings</strong></u><br>";
 	
+    
+	//Save Changes.
+	//strControls += "<div style='float:right'><a href='javascript:;' id='UVSaveChanges' style='text-decoration:none;'>Save Changes</a></div><br>";
+    strControls += "<a href='javascript:;' id='UVSaveChanges' style='text-decoration:none;'>Save Changes</a><br><br>";
+    
 	//Always hide hiddenList.
 	strControls += "<input type='checkbox' id='UVAlwaysHide' value='YES'"
 	if(alwaysHide) strControls += " checked ";
 	strControls += "/> Always hide comments by people on my Hidden List.<br><br>";
 	
 	//Hidden List
-	strControls += "Hidden List:";
-	
-	//Save Changes.
-	strControls += "<div style='float:right'><a href='javascript:;' id='UVSaveChanges' style='text-decoration:none;'>Save Changes</a></div><br>";
+	strControls += "Hidden List:<br>";
 
 	strControls += "<textarea id='UVtxtHiddenList' rows='7' cols='10' style='width:250px;border:1px solid #000000'>"; //Remember to override Spectrum's css.
 	for(j = 0; j < hiddenList.length; j++){
@@ -312,33 +368,36 @@ function writeControlBoxHTML(){
 	strControls += "(One username per line. Things like spaces and caps matter!)<br><br>";
 	
 	//Expand/contract various.
-	strControls += "Comments on Hidden List:<div style='float:right'><a id='UVShowHiddenListed' href='javascript:;' style='text-decoration:none;'>Show</a>&nbsp;-&nbsp;";
-	strControls += "<a id='UVHideHiddenListed' href='javascript:;' style='text-decoration:none;'>Hide</a></div><br>";
-	strControls += "All comments:<div style='float:right'><a id='UVShowAll' href='javascript:;' style='text-decoration:none;'>Show</a>&nbsp;-&nbsp;";
-	strControls += "<a id='UVHideAll' href='javascript:;' style='text-decoration:none;'>Hide</a></div><br>";
+	strControls += "<a id='UVShowHiddenListed' href='javascript:;' style='text-decoration:none;'>Show</a>&nbsp;-&nbsp;";
+	strControls += "<a id='UVHideHiddenListed' href='javascript:;' style='text-decoration:none;'>Hide</a> comments on Hidden List.<br>";
+	strControls += "<a id='UVShowAll' href='javascript:;' style='text-decoration:none;'>Show</a>&nbsp;-&nbsp;";
+	strControls += "<a id='UVHideAll' href='javascript:;' style='text-decoration:none;'>Hide</a> all comments.<br>";
 
 	//END Inner Control Box HTML
 	strControls += "</div>";
 
 	//Control Box Toggler
 	strNewHTML = "";
+    strNewHTML += "<div>"; //This div is to keep the Box Toggler and the Control Box together.
 	strNewHTML += "<div style='";
 	//strNewHTML += "position:fixed;"; //This is the magic property value that makes it float.
 	//strNewHTML += "width:30px;height:10px;left:10px;top:0px;z-index:100;";
-    strNewHTML += "width:30px;height:10px;z-index:1000;";
+    strNewHTML += "width:30px;height:20px;z-index:1000;";
 	strNewHTML += "'>";
 	strNewHTML += "<a id='UVControlMenu' href='javascript:;' style='text-align:center;text-decoration:none;color:#FFFFFF;background-color:#C0C0C0;border: 1px solid black'>&nbsp;UV&nbsp;</a> "
 	strNewHTML += "</div>";
+    
 	//Control Box
 	strNewHTML += "<div id='UVControl' style='";
 	//strNewHTML += "position:fixed;"; //This is the magic property value that makes it float.
 	//strNewHTML += "width:300px;height:50px;left:10px;top:20px;z-index:100;";
-    strNewHTML += "position:relative;"; //This is the magic property value that makes it float.
-	strNewHTML += "width:300px;height:10px;left:0px;top:20px;z-index:1000;";
+    //strNewHTML += "position:absolute;"; //not relative?
+	//strNewHTML += "width:300px;height:10px;left:0px;top:20px;z-index:1000;";
 
 	strNewHTML += "'>";
 	strNewHTML += strControls; //Hidden until clicked.
 	strNewHTML += "</div>";
+	strNewHTML += "</div>"; //End the tag keeping the Box Toggler and the Control Box together.
 
 	//We also need a way to communicate betweeen the scripts on the page and this script. 
 	//We do this with an invisible div.
@@ -396,6 +455,7 @@ function checkForDisqus(){
         writeControlBoxHTML();
         
         monitorCommentsInterval = setInterval(monitorComments, MONITOR_COMMENTS_WAIT);
+        monitorComments();
     }
 }
 
@@ -411,3 +471,4 @@ function checkForDisqus(){
     the job of checkForDisqus() to do what needs to be done if there is Disqus content.
 */
 checkForDisqusInterval = setInterval(checkForDisqus, CHECK_DISQUS_WAIT);
+checkForDisqus();
