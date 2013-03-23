@@ -7,6 +7,9 @@ The current extension includes the following features:
 * Collapse/show all comments for users on the hidden list.
 * Add a user to the hidden list using the "X" link next to the username on the post.
 
+Known issues:
+- Google Chrome support appears to be broken at this time.
+
 NEW IN VERSION 2.0
 New features:
 * Option to have "Add your comment" float on the sidebar.
@@ -32,20 +35,16 @@ ABOUT
 
 You can make a "Hidden List" of usernames whose comments are always hidden by default. Add a username to the Hidden List by clicking the "X" on the upper left of a comment. To edit the Hidden List and other settings, click the "UV" at the top of the Disqus comments.
 
-Google Chrome:
-https://github.com/downloads/rljacobson/UltraViolet-Spectrum-Enhancer/UltraViolet.crx
-
 Safari (Mac or PC):
-https://github.com/downloads/rljacobson/UltraViolet-Spectrum-Enhancer/UltraViolet.safariextz
+https://www.sugarsync.com/pf/D7947864_76985053_93848
 
 Greasemonkey script for FireFox:
-https://github.com/downloads/rljacobson/UltraViolet-Spectrum-Enhancer/UltraViolet.user.js
+https://www.sugarsync.com/pf/D7947864_76985053_93956
 
 FireFox users must first install Greasemonkey:
 https://addons.mozilla.org/en-US/firefox/addon/greasemonkey/
 Then they just click on the link. 
 
-Note that even though Chrome as built-in support for Greasemonkey scripts in general, this Greasemonkey script will only work on FireFox. Chrome users use the Chrome extension.
 
 LICENSE
 

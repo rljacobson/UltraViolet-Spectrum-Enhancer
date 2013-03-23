@@ -11,7 +11,7 @@
 /*
 	UltraViolet Spectrum Enhancer.
 	Robert Jacobson
-	9/1/2012: Version 3.0
+	3/23/2013: Version 3.0
 */
 
 /* GLOBAL VARIABLE DECLARATIONS */
