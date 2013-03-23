@@ -1,6 +1,11 @@
 NEW IN VERSION 3.0
-The new Disqus commenting system required a rewrite of the extension, and many features of the previous version were made obsolete or difficult to implement. The current extension includes the following features:
-* ??
+The new Disqus commenting system required a rewrite of the extension, and many features of the previous version were made obsolete or difficult to implement. In fact, the current version of the extension now targets disqus.com and should work with any website that uses the Disqus commenting system.
+
+The current extension includes the following features:
+* Blacklist Disqus users so that their comments are always collapsed by default.
+* Collapse/show all comments.
+* Collapse/show all comments for users on the hidden list.
+* Add a user to the hidden list using the "X" link next to the username on the post.
 
 NEW IN VERSION 2.0
 New features:
@@ -25,7 +30,7 @@ New features:
 
 ABOUT
 
-You can make a "Hidden List" of usernames whose comments are always hidden by default. Add a username to the Hidden List by clicking the "X" on the upper left of a comment. To edit the Hidden List and other settings, click the "UV" floating in the upper right corner of the page.
+You can make a "Hidden List" of usernames whose comments are always hidden by default. Add a username to the Hidden List by clicking the "X" on the upper left of a comment. To edit the Hidden List and other settings, click the "UV" at the top of the Disqus comments.
 
 Google Chrome:
 https://github.com/downloads/rljacobson/UltraViolet-Spectrum-Enhancer/UltraViolet.crx
